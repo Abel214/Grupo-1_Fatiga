@@ -1,0 +1,210 @@
+"""
+Herramienta de calibración de MAR (Mouth Aspect Ratio)
+=======================================================
+
+Uso:
+    python calibrar_mar.py
+
+Controles:
+    q  -> salir
+    r  -> reiniciar min/max registrados
+
+Qué hace:
+    Abre la cámara, detecta el rostro con MediaPipe FaceLandmarker
+    (el mismo modelo que usa tu detector.py) y muestra en vivo:
+      - El valor actual de MAR
+      - El mínimo y máximo registrados en la sesión
+      - Una barra visual del MAR
+
+    Habla normal unos segundos, luego bosteza exageradamente varias
+    veces. Al final, revisa en consola el rango de valores:
+      - "normal_max" ~ el techo de MAR hablando/gesticulando normal
+      - "bostezo_max" ~ el pico de MAR al bostezar
+
+    Un buen MAR_THRESHOLD queda típicamente a medio camino entre
+    ambos, un poco más cerca del rango de habla normal para no
+    perder bostezos reales.
+"""
+
+import cv2
+import numpy as np
+from pathlib import Path
+import urllib.request
+
+from scipy.spatial import distance
+
+from mediapipe import Image, ImageFormat
+from mediapipe.tasks.python.core.base_options import BaseOptions
+from mediapipe.tasks.python.vision.face_landmarker import (
+    FaceLandmarker,
+    FaceLandmarkerOptions
+)
+
+# ==========================================================
+# Landmarks de boca sugeridos (comisuras externas + puntos
+# distribuidos). Cambia esto si quieres probar otra combinación.
+# ==========================================================
+MOUTH = [61, 82, 13, 312, 291, 317, 14, 87]
+#         0   1   2   3    4    5   6   7
+
+FACE_LANDMARKER_MODEL_URL = (
+    "https://storage.googleapis.com/"
+    "mediapipe-models/"
+    "face_landmarker/"
+    "face_landmarker/"
+    "float16/latest/"
+    "face_landmarker.task"
+)
+
+FACE_LANDMARKER_MODEL_PATH = Path("face_landmarker.task")
+
+
+def ensure_face_landmarker_model():
+    if not FACE_LANDMARKER_MODEL_PATH.exists():
+        urllib.request.urlretrieve(
+            FACE_LANDMARKER_MODEL_URL,
+            FACE_LANDMARKER_MODEL_PATH.as_posix()
+        )
+    return FACE_LANDMARKER_MODEL_PATH
+
+
+def MAR(mouth):
+    A = distance.euclidean(mouth[2], mouth[6])
+    B = distance.euclidean(mouth[1], mouth[7])
+    C = distance.euclidean(mouth[0], mouth[4])
+    if C == 0:
+        return 0.0
+    return (A + B) / (2 * C)
+
+
+def main():
+    ensure_face_landmarker_model()
+
+    options = FaceLandmarkerOptions(
+        base_options=BaseOptions(
+            model_asset_path=FACE_LANDMARKER_MODEL_PATH.as_posix()
+        ),
+        num_faces=1,
+        min_face_detection_confidence=0.5,
+        min_face_presence_confidence=0.5,
+        min_tracking_confidence=0.5
+    )
+
+    landmarker = FaceLandmarker.create_from_options(options)
+
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+    if not cap.isOpened():
+        print("No se pudo abrir la cámara.")
+        return
+
+    mar_min = None
+    mar_max = None
+    mar_actual = 0.0
+
+    print("Calibración iniciada.")
+    print("Habla normal unos segundos, luego bosteza exageradamente.")
+    print("Presiona 'r' para reiniciar min/max, 'q' para salir.\n")
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
+
+        frame = cv2.flip(frame, 1)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        mp_image = Image(image_format=ImageFormat.SRGB, data=rgb)
+        result = landmarker.detect(mp_image)
+
+        h, w, _ = frame.shape
+
+        if result.face_landmarks:
+            landmarks = result.face_landmarks[0]
+
+            pts = [
+                (int(lm.x * w), int(lm.y * h))
+                for lm in landmarks
+            ]
+
+            mouth_pts = [pts[i] for i in MOUTH]
+
+            mar_actual = MAR(mouth_pts)
+
+            if mar_min is None or mar_actual < mar_min:
+                mar_min = mar_actual
+            if mar_max is None or mar_actual > mar_max:
+                mar_max = mar_actual
+
+            # Dibujar los puntos de la boca
+            for (x, y) in mouth_pts:
+                cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
+
+        # ================================
+        # Overlay de información
+        # ================================
+        cv2.rectangle(frame, (0, 0), (320, 110), (0, 0, 0), -1)
+
+        cv2.putText(
+            frame, f"MAR actual: {mar_actual:.3f}",
+            (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2
+        )
+
+        min_txt = f"{mar_min:.3f}" if mar_min is not None else "--"
+        max_txt = f"{mar_max:.3f}" if mar_max is not None else "--"
+
+        cv2.putText(
+            frame, f"Min sesion: {min_txt}",
+            (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2
+        )
+
+        cv2.putText(
+            frame, f"Max sesion: {max_txt}",
+            (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2
+        )
+
+        cv2.putText(
+            frame, "q=salir  r=reiniciar",
+            (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1
+        )
+
+        # Barra visual del MAR (0.0 a 1.2 aprox.)
+        bar_x, bar_y, bar_w, bar_h = 10, 120, 300, 20
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (80, 80, 80), 1)
+
+        fill = int(min(mar_actual / 1.2, 1.0) * bar_w)
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + fill, bar_y + bar_h), (0, 200, 0), -1)
+
+        cv2.imshow("Calibracion MAR - presiona q para salir", frame)
+
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord('q'):
+            break
+        elif key == ord('r'):
+            mar_min = None
+            mar_max = None
+            print("Min/max reiniciados.")
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+    print("\n=== Resumen de calibración ===")
+    if mar_min is not None and mar_max is not None:
+        print(f"MAR minimo registrado: {mar_min:.3f}")
+        print(f"MAR maximo registrado: {mar_max:.3f}")
+        sugerido = mar_min + (mar_max - mar_min) * 0.55
+        print(f"MAR_THRESHOLD sugerido (aprox.): {sugerido:.3f}")
+        print(
+            "\nRecomendacion: revisa el maximo alcanzado SOLO hablando "
+            "normal (sin bostezar) y compáralo con el máximo al bostezar. "
+            "El umbral debe quedar entre ambos, mas cerca del rango de habla "
+            "normal para no perder bostezos reales."
+        )
+    else:
+        print("No se detectaron datos suficientes (¿se detectó el rostro?).")
+
+
+if __name__ == "__main__":
+    main()
