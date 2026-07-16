@@ -1,0 +1,189 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f2f2f2;
+    color: #333;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* ============================
+   Selector de cámara
+   ============================ */
+
+.camera-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.camera-box select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.camera-box button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background-color: #fafafa;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.camera-box button:hover {
+    background-color: #ececec;
+}
+
+/* ============================
+   Layout principal: video + panel lateral
+   ============================ */
+
+.main-content {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* ============================
+   Video (reducido de tamaño)
+   ============================ */
+
+.video-container {
+    flex: 0 0 auto;
+    background-color: #111;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 640px;
+}
+
+.video-container img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 480px;
+    object-fit: cover;
+}
+
+/* ============================
+   Panel lateral: estado + métricas
+   ============================ */
+
+.side-panel {
+    flex: 1 1 260px;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status-box {
+    text-align: center;
+}
+
+.status-box h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+#estado {
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    letter-spacing: 1px;
+}
+
+#estado.alerta {
+    background-color: #2ecc71;
+}
+
+#estado.cansancio {
+    background-color: #e67e22;
+}
+
+#estado.somnolencia {
+    background-color: #e74c3c;
+}
+
+#estado.sin_deteccion {
+    background-color: #95a5a6;
+}
+
+/* ============================
+   Métricas (EAR / MAR)
+   ============================ */
+
+.metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.metrics div {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+}
+
+.metrics strong {
+    color: #333;
+}
+
+/* ============================
+   Responsive: apilar en pantallas pequeñas
+   ============================ */
+
+@media (max-width: 700px) {
+
+    .main-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .side-panel {
+        max-width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .status-box {
+        flex: 1 1 100%;
+    }
+
+    .metrics {
+        flex-direction: row;
+        flex: 1 1 100%;
+    }
+
+    .metrics div {
+        flex: 1;
+    }
+}

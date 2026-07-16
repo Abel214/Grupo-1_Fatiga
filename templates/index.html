@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Detector de Fatiga</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Detección de Fatiga del Conductor</h1>
+
+    <div class="camera-box">
+
+        <label>Seleccionar cámara</label>
+
+        <select id="cameraSelect">
+
+        </select>
+
+        <button id="startButton">
+
+            Iniciar monitoreo
+
+        </button>
+
+    </div>
+
+    <!-- Contenedor principal: video a la izquierda, panel a la derecha -->
+    <div class="main-content">
+
+        <div class="video-container">
+
+            <img id="video"
+                 src=""
+                 alt="Video">
+
+        </div>
+
+        <div class="side-panel">
+
+            <div class="status-box">
+
+                <h2>Estado del conductor</h2>
+
+                <div id="estado" class="alerta">
+
+                    ALERTA
+
+                </div>
+
+            </div>
+
+            <div class="metrics">
+
+                <div>
+
+                    <strong>EAR:</strong>
+
+                    <span id="ear">0.000</span>
+
+                </div>
+
+                <div>
+
+                    <strong>MAR:</strong>
+
+                    <span id="mar">0.000</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+</body>
+
+</html>
